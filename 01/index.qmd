@@ -1,0 +1,590 @@
+---
+title: "Praktikum: Wokee, Dana Masuk Boskyuh"
+subtitle: "Class Method • Static Method • Decorator • Custom Decorator • Chaining • *args/**kwargs"
+author: "Praktikum Pemrograman Berorientasi Objek"
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    transition: fade
+    slide-number: true
+    chalkboard: false
+    touch: true
+    center: false
+    width: 1280
+    height: 720
+execute:
+  echo: false
+---
+
+## Context
+
+![](boskyuh.jpg){fig-align="center" width="72%"}
+
+::: {.small}
+Simpan gambar asli sebagai **`boskyuh.jpg`** di folder yang sama dengan file `.qmd` ini.
+:::
+
+---
+
+::: {.notes}
+- Buka dengan konteks meme terlebih dahulu agar mahasiswa tahu bahwa project ini memakai kasus yang familiar, bukan contoh decorator yang abstrak.
+- Jelaskan bahwa gambar adalah artefak/konteks kasus; fokus praktikum tetap pada desain program Python.
+- Tekankan hubungan dengan materi: kita akan memodelkan proses transaksi lalu menambahkan validasi dan logging menggunakan decorator.
+- Sampaikan bahwa tujuan akhirnya bukan membuat aplikasi marketplace sungguhan, melainkan simulasi kecil yang cukup realistis untuk memperlihatkan manfaat OOP dan decorator.
+:::
+
+## Dari Meme → Kasus Pemrograman
+
+**Masalah:** pesan *“Wokee, dana masuk boskyuh”* bukan bukti pembayaran yang sah.
+
+Kita ubah situasi tersebut menjadi mini **transaction verification system**:
+
+`Pengguna` → `Transaksi` → `Pembayaran` → `Verifikasi`
+
+### Target praktikum
+Menerapkan konsep Python secara terintegrasi, bukan sebagai contoh terpisah.
+
+---
+
+::: {.notes}
+- Jadikan kalimat “Wokee, dana masuk boskyuh” sebagai trigger masalah: sistem tidak boleh menerima klaim teks sebagai bukti pembayaran.
+- Dari masalah tersebut, mahasiswa diminta memikirkan objek apa saja yang ada dalam sistem: pengguna, pembayaran, dan transaksi.
+- Jelaskan alur data: pengguna melakukan transaksi, transaksi memiliki pembayaran, lalu pembayaran diverifikasi sebelum transaksi diproses.
+- Tekankan bahwa decorator nanti berperan sebagai lapisan tambahan di sekitar method, misalnya logging dan pengecekan pembayaran.
+- Target praktikum adalah mengintegrasikan semua materi ke satu project sehingga mahasiswa dapat melihat hubungan antar-konsep.
+:::
+
+## 1. Class Method
+
+Gunakan `@classmethod` saat method berhubungan dengan **class**, bukan satu object tertentu.
+
+```python
+class Pengguna:
+    def __init__(self, nama, username, saldo):
+        self.nama = nama
+        self.username = username
+        self.saldo = saldo
+
+    @classmethod
+    def dari_string(cls, data):
+        nama, username, saldo = data.split(",")
+        return cls(nama, username, int(saldo))
+```
+
+### Ingat
+- menerima `cls`
+- cocok untuk **alternative constructor**
+- dapat membuat instance melalui `cls(...)`
+
+---
+
+::: {.notes}
+- Ingatkan bahwa setiap method biasa menerima `self` karena bekerja pada satu instance tertentu.
+- Class method menerima `cls`, sehingga method bekerja pada level class dan dapat digunakan tanpa memilih instance tertentu sebagai konteks utama.
+- Alternative constructor adalah use case yang paling mudah dipahami: kita punya format input lain lalu mengubahnya menjadi object.
+- Pada contoh `dari_string`, data dipisahkan dengan `split`, lalu dibuat object memakai `cls(...)`.
+- Tekankan kenapa memakai `cls(...)` lebih baik daripada langsung menulis `Pengguna(...)`: subclass dapat mewarisi constructor alternatif tersebut dengan benar.
+- Kaitkan dengan tugas: mahasiswa tidak hanya diminta menulis `@classmethod`, tetapi menjelaskan mengapa method tersebut memang bersifat class-level.
+:::
+
+## 2. Static Method
+
+Gunakan `@staticmethod` untuk fungsi yang secara logis milik class, tetapi **tidak membutuhkan `self` maupun `cls`**.
+
+```python
+class Pengguna:
+    @staticmethod
+    def validasi_saldo(saldo):
+        return saldo >= 0
+```
+
+### Pertanyaan kunci
+
+> Butuh data object? → `self`  
+> Butuh informasi class? → `cls`  
+> Tidak butuh keduanya? → pertimbangkan `staticmethod`
+
+---
+
+::: {.notes}
+- Bedakan dengan class method: static method tidak menerima `self` maupun `cls`.
+- Gunakan contoh validasi saldo untuk menunjukkan bahwa fungsi tersebut tidak perlu membaca atau mengubah object tertentu.
+- Secara konsep, fungsi masih diletakkan di dalam class karena relevan dengan domain `Pengguna`.
+- Tekankan rule sederhana: perlu state instance → `self`; perlu informasi class → `cls`; tidak perlu keduanya → pertimbangkan `staticmethod`.
+- Jangan menyampaikan bahwa semua helper function harus menjadi static method; penekanannya adalah pada keterkaitan logis dengan class.
+- Di tugas, mahasiswa harus bisa memberikan alasan desain, bukan sekadar memenuhi checklist syntax.
+:::
+
+## 3. Decorator: Ide Dasarnya
+
+Decorator adalah cara untuk **membungkus function** dan menambahkan perilaku tanpa mengubah isi function utama.
+
+```python
+def log(func):
+    def wrapper(*args, **kwargs):
+        print(f"[LOG] Menjalankan {func.__name__}()")
+        result = func(*args, **kwargs)
+        print(f"[LOG] {func.__name__}() selesai")
+        return result
+    return wrapper
+```
+
+```python
+@log
+def proses():
+    print("Memproses transaksi...")
+```
+
+**Mental model:** `proses()` → `wrapper()` → `proses asli`
+
+---
+
+::: {.notes}
+- Mulai dari masalah: kita ingin menambahkan logging pada banyak function tanpa menyalin kode logging ke setiap function.
+- Jelaskan bahwa decorator menerima function sebagai input dan mengembalikan function lain, biasanya berupa `wrapper`.
+- Pada contoh, `@log` secara konsep sama dengan membungkus function `proses` menggunakan `log(proses)`.
+- Tunjukkan alur eksekusi: pemanggilan `proses()` sebenarnya masuk ke wrapper, wrapper mencetak log, memanggil function asli, lalu mencetak log selesai.
+- Jelaskan fungsi `return result`: decorator tetap mempertahankan nilai return dari function asli.
+- `functools.wraps` belum menjadi fokus utama slide ini; detail tersebut bisa muncul ketika membahas custom decorator.
+:::
+
+## 4. Custom Decorator untuk Tugas
+
+Kita membutuhkan decorator yang menjadi **guard** sebelum transaksi diproses.
+
+```python
+from functools import wraps
+
+def butuh_pembayaran(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        transaksi = args[0]
+
+        if transaksi.pembayaran.status != "VALID":
+            print("Pembayaran belum valid.")
+            return None
+
+        return func(*args, **kwargs)
+
+    return wrapper
+```
+
+Decorator ini melakukan pengecekan **sebelum** method utama dijalankan.
+
+---
+
+::: {.notes}
+- Di project, decorator tidak hanya logging; kita butuh aturan bisnis yang dapat dipasang ke method tertentu.
+- `butuh_pembayaran` bertindak sebagai guard: sebelum method utama berjalan, periksa status pembayaran.
+- `args[0]` pada method instance biasanya adalah object `self`, sehingga pada contoh `transaksi = args[0]`.
+- Jika status bukan `VALID`, wrapper menghentikan proses dengan `return None`; function asli tidak dipanggil.
+- Jika valid, wrapper meneruskan seluruh argument ke function asli menggunakan `func(*args, **kwargs)`.
+- Jelaskan `@wraps(func)` sebagai praktik baik agar metadata function seperti nama dan docstring tetap terjaga.
+- Hubungkan ini dengan separation of concerns: method `proses()` fokus memproses transaksi, sedangkan decorator menangani aturan “harus sudah dibayar”.
+:::
+
+## 5. Kenapa `*args` dan `**kwargs`?
+
+Wrapper sebaiknya tidak terlalu bergantung pada bentuk parameter function yang dibungkus.
+
+```python
+def decorator(func):
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
+```
+
+- `*args` → positional arguments
+- `**kwargs` → keyword arguments
+
+Dengan ini decorator dapat membungkus method dengan parameter yang berbeda.
+
+---
+
+::: {.notes}
+- Jelaskan masalah jika wrapper ditulis dengan parameter yang terlalu spesifik: decorator hanya cocok untuk satu bentuk function.
+- `*args` menampung semua positional argument tanpa perlu mengetahui jumlah dan namanya sejak awal.
+- `**kwargs` menampung keyword argument dengan nama parameter yang fleksibel.
+- Yang paling penting adalah wrapper dapat meneruskan argument tersebut kembali ke function asli.
+- Pada instance method, `self` biasanya masuk sebagai salah satu positional argument, sehingga wrapper tidak perlu mendefinisikan `self` secara eksplisit.
+- Hubungkan dengan chaining dan reusable decorator: semakin generik wrapper, semakin banyak method yang dapat menggunakan decorator yang sama.
+- Mahasiswa harus dapat menjelaskan perbedaan `args` sebagai tuple dan `kwargs` sebagai dictionary.
+:::
+
+## 6. Chaining Decorator
+
+Beberapa decorator dapat dipasang pada satu method.
+
+```python
+@log
+@butuh_pembayaran
+def proses(self):
+    print("Transaksi diproses")
+```
+
+Secara konseptual:
+
+```text
+proses
+  ↓
+log
+  ↓
+butuh_pembayaran
+  ↓
+method asli
+```
+
+### Perhatikan
+Urutan **penulisan decorator** memengaruhi urutan wrapper yang membungkus function.
+
+---
+
+::: {.notes}
+- Jelaskan bahwa beberapa decorator dapat membungkus function yang sama secara berlapis.
+- Untuk `@log` di atas `@butuh_pembayaran`, secara konseptual decorator paling dekat dengan function diterapkan lebih dulu: `log(butuh_pembayaran(proses))`.
+- Akibatnya pemanggilan masuk ke wrapper `log`, lalu diteruskan ke wrapper `butuh_pembayaran`, lalu baru ke method asli.
+- Ini penting karena urutan decorator dapat mengubah perilaku program.
+- Mintalah mahasiswa memperhatikan output saat satu decorator menghentikan proses: decorator di bagian luar tetap bisa menjalankan kode sebelum/ sesudah pemanggilan inner wrapper.
+- Pada tugas lanjutan, mahasiswa akan menambah `@cek_nominal` untuk melihat lebih jelas efek urutan chaining.
+:::
+
+## Deep Dive: Project
+
+### Sistem Verifikasi Transaksi Marketplace
+
+Minimal gunakan tiga class:
+
+```text
+Pengguna
+Pembayaran
+Transaksi
+```
+
+Alur utama:
+
+```text
+Buat pengguna
+     ↓
+Buat pembayaran
+     ↓
+Verifikasi bukti
+     ↓
+Cek pembayaran
+     ↓
+Proses transaksi
+     ↓
+SELESAI / GAGAL
+```
+
+---
+
+::: {.notes}
+- Di bagian ini berhenti sejenak dari teori dan mapping-kan setiap materi ke komponen project.
+- `Pengguna` menyimpan identitas dan saldo; `Pembayaran` menyimpan data pembayaran; `Transaksi` mengoordinasikan proses.
+- Gunakan diagram alur untuk menjelaskan dependency: transaksi membutuhkan object pembayaran, dan proses transaksi bergantung pada hasil verifikasi pembayaran.
+- Tekankan bahwa decorator tidak menggantikan class; decorator hanya menambahkan perilaku pada method yang sudah ada.
+- Tujuan desainnya adalah membuat setiap class punya tanggung jawab yang cukup jelas.
+:::
+
+## Class `Pengguna`
+
+Minimal memiliki:
+
+```python
+nama
+username
+saldo
+```
+
+Wajib menunjukkan:
+
+```python
+@classmethod
+def dari_string(...)
+```
+
+dan:
+
+```python
+@staticmethod
+def validasi_saldo(...)
+```
+
+### Fokus
+Tunjukkan **alasan pemilihan** class method dan static method, bukan sekadar menambahkan decorator.
+
+---
+
+::: {.notes}
+- Tunjukkan bahwa `Pengguna` adalah domain object biasa yang menyimpan state pada instance.
+- `nama`, `username`, dan `saldo` merupakan contoh instance attribute karena setiap pengguna dapat memiliki nilai berbeda.
+- `dari_string()` cocok sebagai class method karena cara pembentukan object berasal dari format input alternatif.
+- `validasi_saldo()` cocok sebagai static method karena pengecekan hanya membutuhkan nilai saldo yang diberikan.
+- Dorong mahasiswa untuk menjelaskan “mengapa” masing-masing method diberi decorator tersebut.
+- Bila ingin memperluas, mahasiswa dapat menambahkan validasi username atau factory dari dictionary tanpa mengubah konsep dasar.
+:::
+
+## Class `Pembayaran`
+
+Minimal memiliki:
+
+```python
+nominal
+metode
+bukti
+status
+```
+
+Contoh:
+
+```python
+Pembayaran(
+    150000,
+    "Transfer Bank",
+    "TRANSFER_VALID"
+)
+```
+
+Status awal:
+
+```text
+PENDING
+```
+
+Method penting:
+
+```python
+verifikasi()
+```
+
+---
+
+::: {.notes}
+- Jelaskan bahwa status awal `PENDING` berarti sistem belum memiliki keputusan akhir.
+- `nominal`, `metode`, dan `bukti` adalah data yang perlu dipertimbangkan saat verifikasi.
+- `verifikasi()` menjadi titik yang mengubah state pembayaran dari `PENDING` menjadi `VALID` atau `INVALID`.
+- Pada level tugas, aturan verifikasi sengaja sederhana agar perhatian mahasiswa tetap pada decorator, bukan algoritma fraud detection.
+- Tekankan bahwa status pembayaran nantinya dibaca oleh decorator `butuh_pembayaran`.
+:::
+
+## Verifikasi: Meme vs Pembayaran
+
+### Valid
+
+```python
+bukti = "TRANSFER_VALID"
+```
+
+→ `status = "VALID"`
+
+### Tidak valid
+
+```python
+bukti = "Wokee dana masuk boskyuh"
+```
+
+→ `status = "INVALID"`
+
+**Inti kasus:** sistem tidak boleh mempercayai klaim pembayaran hanya karena seseorang mengatakan dana sudah masuk.
+
+---
+
+::: {.notes}
+- Gunakan slide ini untuk memperjelas aturan bisnis yang sangat sederhana.
+- `TRANSFER_VALID` adalah token simulasi yang mewakili bukti transfer yang diterima sistem.
+- Kalimat “Wokee dana masuk boskyuh” hanya sebuah klaim/pesan dan tidak sama dengan bukti yang diverifikasi sistem.
+- Dengan demikian kasus meme menjadi input invalid yang sengaja kita masukkan untuk menguji guard pada transaksi.
+- Tekankan bahwa dalam aplikasi nyata tentu verifikasi akan jauh lebih kompleks, tetapi pada praktikum kita abstrahkan menjadi satu aturan string.
+- Tujuan utamanya adalah membuat mahasiswa dapat melihat dampak status pembayaran terhadap method `proses()`.
+:::
+
+## Class `Transaksi`
+
+Minimal:
+
+```python
+id_transaksi
+pembeli
+penjual
+pembayaran
+status
+```
+
+Method utama:
+
+```python
+@log
+@butuh_pembayaran
+def proses(self):
+    ...
+```
+
+Status akhir:
+
+```text
+VALID   → SELESAI
+INVALID → GAGAL
+```
+
+---
+
+::: {.notes}
+- `Transaksi` menjadi coordinator: ia menyimpan siapa pembeli, siapa penjual, dan pembayaran mana yang digunakan.
+- `proses()` adalah method utama yang akan menjadi target chaining decorator.
+- `@butuh_pembayaran` memastikan aturan bisnis dipenuhi sebelum isi method dijalankan.
+- `@log` memberikan observability sederhana agar kita dapat melihat kapan method dipanggil dan selesai.
+- Setelah guard lolos, method dapat mengubah status transaksi menjadi `SELESAI`; jika tidak lolos, status menjadi `GAGAL` atau tetap gagal sesuai implementasi.
+- Tegaskan bahwa decorator memisahkan cross-cutting concern seperti logging/guard dari business logic proses transaksi.
+:::
+
+## Expected Flow
+
+### Skenario A — Valid
+
+```text
+[LOG] Menjalankan proses()
+[CHECK] Pembayaran valid.
+Transaksi berhasil diproses.
+[LOG] proses() selesai
+```
+
+### Skenario B — “Boskyuh”
+
+```text
+[LOG] Menjalankan proses()
+[CHECK] Pembayaran tidak valid.
+Transaksi tidak dapat diproses.
+```
+
+### Yang harus terlihat
+Decorator bukan hiasan — **ia benar-benar mengontrol flow program.**
+
+---
+
+::: {.notes}
+- Bandingkan dua skenario dengan input berbeda tetapi struktur program yang sama.
+- Pada skenario valid, decorator logging aktif dan guard pembayaran lolos sehingga method asli benar-benar berjalan.
+- Pada skenario “boskyuh”, logging tetap bisa muncul, tetapi guard menghentikan eksekusi sebelum business logic utama dijalankan.
+- Ini adalah momen penting untuk menunjukkan bahwa decorator memengaruhi control flow, bukan sekadar menghasilkan output tambahan.
+- Saat live demo, gunakan dua object `Pembayaran` yang hanya berbeda pada field `bukti`.
+- Minta mahasiswa mengamati perbedaan status akhir transaksi dan kapan pesan dari method asli muncul atau tidak muncul.
+:::
+
+## Tantangan: 3 Decorator Sekaligus
+
+Tambahkan decorator:
+
+```python
+@cek_nominal
+```
+
+Lalu gunakan:
+
+```python
+@log
+@cek_nominal
+@butuh_pembayaran
+def proses(self):
+    ...
+```
+
+`@cek_nominal` harus memastikan:
+
+```text
+harga barang == nominal pembayaran
+```
+
+Jika tidak sesuai → transaksi ditolak.
+
+---
+
+::: {.notes}
+- Tambahkan aturan bisnis kedua: nominal pembayaran harus sesuai dengan harga barang.
+- `cek_nominal` dapat membaca transaksi dari `args[0]`, lalu membandingkan harga dengan nominal pembayaran.
+- Setelah itu mahasiswa memiliki tiga lapisan concern: logging, nominal validation, dan payment validation.
+- Ini adalah tempat yang baik untuk meminta mahasiswa memprediksi urutan output sebelum menjalankan program.
+- Bahas konsekuensi urutan decorator: apakah logging tetap mencatat proses jika validasi gagal? kapan validasi nominal terjadi? kapan validasi pembayaran terjadi?
+- Pastikan setiap decorator tetap menerima `*args` dan `**kwargs` sehingga chain tetap kompatibel.
+:::
+
+## Checklist Submission
+
+### Wajib
+
+- [ ] `@classmethod`
+- [ ] `@staticmethod`
+- [ ] minimal 2 custom decorator
+- [ ] chaining decorator
+- [ ] `*args` pada wrapper
+- [ ] `**kwargs` pada wrapper
+- [ ] class `Pengguna`
+- [ ] class `Pembayaran`
+- [ ] class `Transaksi`
+- [ ] skenario valid
+- [ ] skenario “Wokee dana masuk boskyuh”
+
+### Fokus penilaian
+**Bisa menjelaskan mengapa desain tersebut dipilih**, bukan hanya program dapat dijalankan.
+
+---
+
+::: {.notes}
+- Gunakan checklist sebagai pemeriksaan mandiri sebelum mahasiswa mengumpulkan tugas.
+- Tekankan bahwa semua konsep harus benar-benar dipakai dalam program, bukan hanya didefinisikan lalu tidak pernah dipanggil.
+- Dua custom decorator berarti minimal ada dua decorator buatan sendiri yang memiliki fungsi nyata.
+- Pastikan mahasiswa menguji minimal satu kasus valid dan satu kasus invalid “Wokee dana masuk boskyuh”.
+- Bagian paling penting dalam penilaian adalah kemampuan menjelaskan alasan desain dan alur eksekusi decorator.
+- Ingatkan bahwa kode yang jalan tanpa pemahaman konsep belum memenuhi tujuan praktikum sepenuhnya.
+:::
+
+## Pertanyaan Deep Dive
+
+**1.** Mengapa `dari_string()` cocok sebagai `classmethod`?
+
+**2.** Mengapa `validasi_saldo()` cocok sebagai `staticmethod`?
+
+**3.** Apa yang sebenarnya dikembalikan oleh decorator?
+
+**4.** Mengapa wrapper memakai `*args` dan `**kwargs`?
+
+**5.** Bagaimana urutan eksekusi decorator saat chaining?
+
+**6.** Apa yang terjadi jika decorator tidak pernah memanggil `func(...)`?
+
+**7.** Mengapa validasi pembayaran lebih rapi jika dipisahkan menjadi decorator?
+
+---
+
+::: {.notes}
+- Gunakan pertanyaan ini sebagai review lisan atau diskusi setelah mahasiswa selesai coding.
+- Untuk nomor 1–2, fokus pada pemahaman perbedaan instance-level, class-level, dan utility-level behavior.
+- Untuk nomor 3–6, fokus pada mekanisme decorator: function sebagai object, wrapper, pemanggilan `func`, serta `*args/**kwargs`.
+- Untuk nomor 5, minta mahasiswa menulis bentuk ekspansi chaining secara eksplisit, misalnya `log(cek_nominal(butuh_pembayaran(proses)))`.
+- Untuk nomor 6, pastikan mahasiswa memahami bahwa jika wrapper tidak memanggil `func(...)`, method asli tidak pernah dieksekusi.
+- Nomor 7 menguji kemampuan desain: decorator membantu memisahkan concern yang berulang dari business logic.
+:::
+
+## Takeaway
+
+> **Decorator bukan sekadar syntax `@`.**
+
+Decorator adalah pola untuk **menambahkan perilaku pada function/method secara modular**.
+
+Pada project ini kita gabungkan:
+
+`Class Method` + `Static Method` + `Decorator` + `*args/**kwargs` + `Chaining`
+
+menjadi satu sistem kecil yang realistis:
+
+### **“Wokee, Dana Masuk Boskyuh” → Transaction Verification System**
+
+---
+
+::: {.notes}
+- Tutup dengan kembali ke tujuan awal: kita mengambil kasus sederhana lalu mengubahnya menjadi masalah desain software.
+- Rangkum bahwa class method dan static method membantu menentukan bagaimana method berhubungan dengan object/class.
+- Decorator memungkinkan penambahan perilaku secara modular tanpa mengedit isi method utama.
+- `*args` dan `**kwargs` membuat wrapper lebih fleksibel, sedangkan chaining memungkinkan beberapa concern digabung.
+- Tekankan bahwa meme hanyalah konteks; inti pembelajaran adalah cara memodelkan dan memisahkan tanggung jawab dalam program.
+- Sebelum pindah ke pengerjaan, pastikan mahasiswa memahami target output dan seluruh checklist tugas.
+:::

@@ -1,0 +1,61 @@
+/*-- scss:rules --*/
+
+.reveal {
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-size: 27px;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3 {
+  letter-spacing: -0.02em;
+  margin-bottom: 0.35em;
+}
+
+.reveal h2 {
+  font-size: 1.65em;
+}
+
+.reveal h3 {
+  font-size: 1.15em;
+}
+
+.reveal p,
+.reveal li {
+  line-height: 1.28;
+}
+
+.reveal code {
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+}
+
+.reveal pre {
+  font-size: 0.70em;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.reveal pre code {
+  max-height: 470px;
+  padding: 0.8em 1em;
+}
+
+.reveal .small {
+  font-size: 0.65em;
+}
+
+.reveal strong {
+  font-weight: 750;
+}
+
+.reveal table {
+  font-size: 0.70em;
+}
+
+.reveal .slide-number {
+  font-size: 0.6em;
+}

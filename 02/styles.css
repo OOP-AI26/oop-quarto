@@ -1,0 +1,308 @@
+
+/* ---------- RevealJS base ---------- */
+
+.reveal {
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-size: 28px;
+  color: #182230;
+  background: #f7f8fa;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal .slides section {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3 {
+  color: #10233f;
+  letter-spacing: -0.025em;
+}
+
+.reveal h1 {
+  font-size: 2.0em;
+  font-weight: 800;
+  margin-bottom: 0.35em;
+}
+
+.reveal h2 {
+  font-size: 1.45em;
+  font-weight: 750;
+  margin-bottom: 0.4em;
+}
+
+.reveal h3 {
+  font-size: 1.0em;
+  font-weight: 700;
+}
+
+.reveal p,
+.reveal li {
+  line-height: 1.38;
+}
+
+.reveal ul,
+.reveal ol {
+  margin-top: 0.25em;
+}
+
+.reveal li {
+  margin-bottom: 0.18em;
+}
+
+.reveal strong {
+  color: #0f4c81;
+}
+
+.reveal table {
+  font-size: 0.72em;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.reveal th {
+  background: #e9eef5;
+  color: #10233f;
+}
+
+.reveal td,
+.reveal th {
+  padding: 0.38em 0.55em;
+}
+
+.reveal pre {
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: none;
+  border-radius: 10px;
+  overflow: auto;
+}
+
+.reveal pre code {
+  max-height: 560px;
+  padding: 0.9em 1.05em;
+  border-radius: 10px;
+  font-size: 0.86em;
+  line-height: 1.42;
+}
+
+.reveal .notes {
+  font-size: 0.8em;
+}
+
+/* ---------- Pyodide playground ---------- */
+
+.pyodide-playground {
+  width: 100%;
+  margin: 0.65rem 0 0;
+  background: #171a21 !important;
+  border: 1px solid #303643;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(20, 30, 45, 0.18);
+  box-sizing: border-box;
+  color: #e6edf3;
+}
+
+.playground-titlebar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  background: #20242d !important;
+  border-bottom: 1px solid #303643;
+  color: #cbd5e1 !important;
+  font-family: Inter, "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 650;
+  box-sizing: border-box;
+}
+
+.window-dots {
+  display: flex;
+  gap: 7px;
+  margin-right: 13px;
+}
+
+.window-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #64748b;
+  display: block;
+}
+
+.playground-filename {
+  flex: 1;
+  text-align: center;
+  margin-left: -42px;
+  color: #cbd5e1 !important;
+}
+
+.playground-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  min-width: 0;
+  height: 360px;
+  box-sizing: border-box;
+}
+
+.playground-editor {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #171a21 !important;
+}
+
+.playground-editor textarea {
+  width: 100% !important;
+  height: 360px !important;
+  min-width: 0;
+  display: block;
+  resize: none;
+  box-sizing: border-box;
+  border: 0 !important;
+  outline: 0 !important;
+  padding: 18px 20px !important;
+  margin: 0 !important;
+  background: #171a21 !important;
+  color: #e6edf3 !important;
+  caret-color: #ffffff;
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace !important;
+  font-size: 18px !important;
+  line-height: 1.48 !important;
+  tab-size: 4;
+  white-space: pre;
+  overflow: auto;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.playground-side {
+  width: 310px;
+  min-width: 0;
+  box-sizing: border-box;
+  background: #0f131a !important;
+  border-left: 1px solid #303643;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  overflow: hidden;
+}
+
+.playground-run {
+  align-self: flex-start;
+  appearance: none;
+  border: 0 !important;
+  border-radius: 7px !important;
+  padding: 8px 15px !important;
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+  font-family: Inter, "Segoe UI", sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+.playground-run:hover {
+  background: #2563eb !important;
+}
+
+.playground-run:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.playground-output-label {
+  color: #94a3b8 !important;
+  font-family: Inter, "Segoe UI", sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  font-weight: 750 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 !important;
+}
+
+.playground-output {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 12px !important;
+  box-sizing: border-box !important;
+  overflow: auto !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  background: #171a21 !important;
+  color: #dbeafe !important;
+  border: 1px solid #303643 !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace !important;
+  font-size: 15px !important;
+  line-height: 1.45 !important;
+}
+
+.playground-status {
+  color: #94a3b8 !important;
+  font-family: Inter, "Segoe UI", sans-serif !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  min-height: 14px;
+}
+
+/* Prevent Quarto/Reveal generic pre rules from recoloring the playground. */
+.pyodide-playground pre,
+.pyodide-playground pre code {
+  background: #171a21 !important;
+  color: #dbeafe !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Keep playground slides compact. */
+.reveal .slides section:has(.pyodide-playground) {
+  padding-bottom: 8px;
+}
+
+.reveal .slides section:has(.pyodide-playground) > p:first-of-type {
+  margin-bottom: 0.25em;
+}
+
+/* ---------- Smaller screens ---------- */
+
+@media (max-width: 1150px) {
+  .reveal {
+    font-size: 24px;
+  }
+
+  .playground-body {
+    grid-template-columns: minmax(0, 1fr) 270px;
+    height: 340px;
+  }
+
+  .playground-side {
+    width: 270px;
+  }
+
+  .playground-editor textarea {
+    height: 340px !important;
+    font-size: 16px !important;
+  }
+
+  .playground-output {
+    font-size: 13px !important;
+  }
+}

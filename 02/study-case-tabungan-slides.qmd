@@ -1,0 +1,921 @@
+---
+title: "Study Case — Tabungan Sederhana"
+subtitle: "Class Method, Static Method, Property, Decorator, dan *args/**kwargs"
+author: "Praktikum Pemrograman Berorientasi Objek — Gasal 2026"
+format:
+  revealjs:
+    theme: [default]
+    css: styles.css
+    include-after-body: playground.html
+    slide-number: true
+    transition: slide
+    width: 1600
+    height: 900
+    margin: 0.06
+    center: false
+    controls: true
+    progress: true
+    navigation-mode: linear
+    code-line-numbers: true
+execute:
+  echo: true
+  warning: false
+---
+
+# Study Case — Tabungan Sederhana
+
+**Konsep yang dilatih**
+
+- Class attribute & object state
+- `@classmethod` sebagai factory method
+- `@staticmethod` untuk validasi
+- `@property` dan setter
+- Custom decorator & decorator chaining
+- `*args` dan `**kwargs`
+- Validasi state dan method yang mengubah object
+
+::: {.notes}
+- Jelaskan bahwa tujuan sesi bukan menghafal sintaks, tetapi memahami hubungan antar-konsep.
+- Study case menggunakan satu class utama, tetapi kita akan membongkarnya menjadi konsep-konsep kecil.
+- Playground berisi contoh yang sudah lengkap. Mahasiswa tinggal menjalankan, membaca, lalu memodifikasi bagian yang baru dipelajari.
+- Kode contoh sengaja tidak menggunakan `Tabungan`, supaya mahasiswa tetap mengerjakan study case secara mandiri.
+:::
+
+---
+
+# Target Belajar
+
+Setelah sesi ini, mahasiswa diharapkan mampu:
+
+1. Membedakan **class state** dan **object state**.
+2. Membuat factory method dengan `@classmethod`.
+3. Membuat utility validator dengan `@staticmethod`.
+4. Mengontrol akses attribute menggunakan `@property`.
+5. Menulis decorator yang menerima `*args/**kwargs`.
+6. Memahami bagaimana decorator bekerja saat **ditumpuk**.
+7. Menulis method yang mengubah state dengan aturan validasi.
+
+::: {.notes}
+- Tekankan bahwa setiap konsep akan muncul lagi ketika mahasiswa mengerjakan TODO.
+- Jangan langsung membahas implementasi Tabungan.
+- Fokuskan mahasiswa pada pola umum yang bisa dipindahkan ke kasus lain.
+:::
+
+---
+
+# Peta Besar Kode
+
+Kita akan membaca kode dari luar ke dalam:
+
+| Langkah | Konsep |
+|---|---|
+| 1. Data bersama | class attribute |
+| 2. Cara membuat object | constructor + factory method |
+| 3. Cara mengecek data | static method |
+| 4. Cara menjaga state | property + setter |
+| 5. Cara membungkus perilaku | decorator |
+| 6. Cara menggabungkan decorator | chaining + `*args/**kwargs` |
+| 7. Cara mengubah state | method + validasi |
+
+::: {.notes}
+- Ini adalah urutan belajar, bukan urutan wajib menulis kode.
+- Saat mengerjakan, mahasiswa boleh mengimplementasikan dari TODO paling sederhana terlebih dahulu.
+- Ingatkan bahwa satu object bisa menggunakan class state sekaligus object state.
+:::
+
+---
+
+# Class Attribute
+
+Class attribute adalah data yang **dimiliki oleh class**, bukan dibuat khusus untuk setiap object.
+
+```python
+class Produk:
+    jumlah_produk = 0
+
+    def __init__(self, nama):
+        self.nama = nama
+        Produk.jumlah_produk += 1
+
+a = Produk("Mouse")
+b = Produk("Keyboard")
+
+print(a.nama)              # Mouse
+print(Produk.jumlah_produk)  # 2
+```
+
+**Intinya:** `jumlah_produk` dipakai sebagai penghitung bersama, bukan milik satu object saja.
+
+::: {.notes}
+- Bedakan `self.nama` dengan `Produk.jumlah_produk`.
+- `self.nama` berbeda untuk setiap object.
+- `jumlah_produk` berada pada level class sehingga satu counter dipakai bersama.
+- Dalam study case, counter rekening dan counter setoran adalah contoh class state.
+:::
+
+---
+
+# Playground 1 — Class State
+
+Jalankan dulu, lalu coba:
+
+- ubah nama produk,
+- tambahkan object baru,
+- amati perubahan counter melalui object maupun melalui class.
+
+<div class="pyodide-playground" data-title="class-state.py">
+<script type="text/plain" class="pyodide-code">class Produk:
+    jumlah_produk = 0
+
+    def __init__(self, nama):
+        self.nama = nama
+        Produk.jumlah_produk += 1
+
+
+produk1 = Produk("Mouse")
+produk2 = Produk("Keyboard")
+produk3 = Produk("Monitor")
+
+print("Produk pertama :", produk1.nama)
+print("Produk kedua   :", produk2.nama)
+print("Total produk   :", Produk.jumlah_produk)</script>
+</div>
+
+::: {.notes}
+- Jalankan dulu tanpa mengubah kode.
+- Tanyakan: mengapa totalnya 3 padahal tidak ada `self.jumlah_produk`?
+- Arahkan mahasiswa untuk melihat bahwa increment dilakukan pada class `Produk`.
+- Tantangan kecil: tambahkan satu object lagi dan prediksi output sebelum Run.
+:::
+
+---
+
+# Constructor: Tempat Object Dilahirkan
+
+Constructor `__init__` dipanggil otomatis setiap kali object dibuat.
+
+```python
+class Buku:
+    def __init__(self, judul, halaman):
+        self.judul = judul
+        self.halaman = halaman
+
+buku = Buku("Algoritma", 300)
+```
+
+Alurnya:
+
+```text
+Buku(...) → __init__(...) → object siap digunakan
+```
+
+Constructor cocok untuk **inisialisasi object**, memastikan object lahir dalam kondisi awal yang valid.
+
+::: {.notes}
+- Bedakan `self.nama` (object state) dengan class attribute.
+- Constructor bertugas membuat object berada dalam kondisi awal yang valid.
+- Study case memakai constructor untuk nama, nomor, dan saldo awal.
+:::
+
+---
+
+# Factory Method dengan `@classmethod`
+
+Kadang object perlu dibuat dari format input tertentu. Daripada parsing di luar class:
+
+```python
+teks = "Python;2026"
+bagian = teks.split(";")
+buku = Buku(bagian[0], int(bagian[1]))
+```
+
+kita sediakan factory method di dalam class:
+
+```python
+class Buku:
+    @classmethod
+    def dari_teks(cls, teks):
+        judul, tahun = teks.split(";")
+        return cls(judul, int(tahun))
+
+buku = Buku.dari_teks("Python;2026")
+```
+
+**Factory method = cara alternatif untuk membuat object.**
+
+::: {.notes}
+- Kata kuncinya adalah "factory": method ini menghasilkan object.
+- `cls` menunjuk ke class yang memanggil method.
+- `return cls(...)` membuat object melalui class tersebut.
+- Ini membuat parsing dan konstruksi object tetap dekat dengan class yang bertanggung jawab.
+:::
+
+---
+
+# Playground 2 — Factory Method
+
+Perhatikan tiga langkah di dalam method: pecah teks → ubah tipe data → buat object dengan `cls`.
+
+<div class="pyodide-playground" data-title="factory-method.py">
+<script type="text/plain" class="pyodide-code">class Buku:
+    def __init__(self, judul, tahun):
+        self.judul = judul
+        self.tahun = tahun
+
+    @classmethod
+    def dari_teks(cls, teks):
+        judul, tahun = teks.split(";")
+        return cls(judul, int(tahun))
+
+
+buku = Buku.dari_teks("Python;2026")
+
+print("Judul :", buku.judul)
+print("Tahun :", buku.tahun)</script>
+</div>
+
+::: {.notes}
+- Tunjukkan bahwa caller tidak perlu tahu bagaimana string diparsing.
+- Tekankan `cls`, bukan `Buku`, pada `return`.
+- Modifikasi latihan: ubah format menjadi `"C++;2025"`.
+:::
+
+---
+
+# `@staticmethod`: Method Tanpa Object
+
+Static method cocok untuk operasi yang:
+
+- berhubungan dengan class,
+- tetapi tidak membutuhkan `self`,
+- dan tidak membutuhkan `cls`.
+
+```python
+class Kode:
+    @staticmethod
+    def valid(kode):
+        return kode.startswith("B") and len(kode) == 4
+
+Kode.valid("B123")  # tidak perlu membuat object Kode
+```
+
+::: {.notes}
+- Bandingkan dengan classmethod: staticmethod tidak menerima `cls`.
+- Validator biasanya merupakan contoh yang mudah karena hanya memeriksa input.
+- Study case memakai pola yang sama untuk memeriksa nomor rekening.
+:::
+
+---
+
+# Playground 3 — Static Method
+
+Coba ubah beberapa input dan lihat hasil validasinya.
+
+<div class="pyodide-playground" data-title="static-method.py">
+<script type="text/plain" class="pyodide-code">class Kode:
+    @staticmethod
+    def valid(kode):
+        return kode.startswith("B") and len(kode) == 4
+
+
+kode1 = "B123"
+kode2 = "C123"
+kode3 = "B12"
+
+print(kode1, "->", Kode.valid(kode1))
+print(kode2, "->", Kode.valid(kode2))
+print(kode3, "->", Kode.valid(kode3))</script>
+</div>
+
+::: {.notes}
+- Jelaskan bahwa method ini dapat dipanggil langsung dari class.
+- Perhatikan bahwa tidak ada `self`.
+- Hubungkan dengan study case: nomor valid jika pola tertentu terpenuhi.
+:::
+
+---
+
+# Property: Attribute yang Punya Aturan
+
+Tanpa property, `barang.stok = -100` bisa saja terjadi begitu saja.
+
+Dengan property, assignment melewati validasi terlebih dahulu:
+
+```python
+class Barang:
+    @property
+    def stok(self):
+        return self.__stok
+
+    @stok.setter
+    def stok(self, nilai):
+        if nilai < 0:
+            raise ValueError("Stok tidak boleh negatif")
+        self.__stok = nilai
+```
+
+::: {.notes}
+- Jelaskan bahwa property membuat assignment terlihat seperti attribute biasa.
+- Di belakang layar, getter dan setter adalah method.
+- `__stok` adalah penyimpanan internal.
+- Dalam study case, `__saldo` menjadi internal state dan `saldo` menjadi interface yang dikontrol.
+:::
+
+---
+
+# Getter dan Setter: Alur Sederhana
+
+```text
+barang.stok = 20 → setter → validasi → __stok
+barang.stok      → getter → __stok
+```
+
+- Menulis `barang.stok = 20` → Python menjalankan **setter**.
+- Menulis `barang.stok` → Python menjalankan **getter**.
+
+> **Property = kontrol akses state tanpa mengubah cara pemakaian dari luar.**
+
+::: {.notes}
+- Ini konsep penting sebelum decorator.
+- Pengguna class tidak perlu tahu nama `__stok`.
+- Setter adalah tempat yang tepat untuk invariant sederhana seperti batas minimum/maksimum.
+- Assignment di dalam `__init__` juga melewati setter — penting untuk validasi saldo awal.
+:::
+
+---
+
+# Playground 4 — Property & Validation
+
+Coba: ubah stok awal, lakukan assignment baru, perhatikan kapan `ValueError` muncul.
+
+<div class="pyodide-playground" data-title="property.py">
+<script type="text/plain" class="pyodide-code">class Barang:
+    def __init__(self, nama, stok):
+        self.nama = nama
+        self.stok = stok
+
+    @property
+    def stok(self):
+        return self.__stok
+
+    @stok.setter
+    def stok(self, nilai):
+        if nilai < 0:
+            raise ValueError("Stok tidak boleh negatif")
+        self.__stok = nilai
+
+
+barang = Barang("Keyboard", 20)
+
+print("Stok awal:", barang.stok)
+
+barang.stok = 35
+print("Stok baru :", barang.stok)</script>
+</div>
+
+::: {.notes}
+- Jalankan versi awal.
+- Ubah `barang.stok = 35` menjadi nilai negatif untuk melihat validasi.
+- Tekankan bahwa assignment ke `self.stok` di constructor juga melewati setter.
+:::
+
+---
+
+# Apa Itu Decorator?
+
+Decorator adalah fungsi yang **membungkus fungsi lain**, menambahkan perilaku tanpa menulis ulang fungsi asli.
+
+```text
+fungsi asli → decorator → fungsi yang sudah dibungkus
+```
+
+```python
+def sapa_dulu(func):
+    def wrapper():
+        print("Sebelum")
+        hasil = func()
+        print("Sesudah")
+        return hasil
+    return wrapper
+```
+
+::: {.notes}
+- Gunakan analogi pembungkus, tetapi jangan terlalu lama pada analogi.
+- Fungsi asli tetap ada, tetapi reference-nya digantikan dengan wrapper hasil decorator.
+- Decorator sangat berguna untuk perilaku tambahan seperti logging, counting, timing, dan validasi.
+:::
+
+---
+
+# Decorator dan `*args/**kwargs`
+
+Masalah muncul jika kita tidak tahu signature function yang akan dibungkus:
+
+```python
+func(a)
+func(a, b)
+func(a=10)
+func(a=10, b=20)
+```
+
+Solusi umum pada wrapper:
+
+```python
+def decorator(func):
+    def wrapper(*args, **kwargs):
+        hasil = func(*args, **kwargs)
+        return hasil
+    return wrapper
+```
+
+`*args` menampung positional, `**kwargs` menampung keyword arguments — keduanya diteruskan lagi ke function asli.
+
+::: {.notes}
+- Tekankan bahwa `*args/**kwargs` menjaga wrapper tetap fleksibel.
+- Di study case, method dipanggil dengan keyword argument `jumlah=...`.
+- Karena itu wrapper harus meneruskan `kwargs`, bukan hanya `args`.
+:::
+
+---
+
+# Playground 5 — `*args/**kwargs`
+
+Function dapat dipanggil dengan positional maupun keyword arguments.
+
+<div class="pyodide-playground" data-title="args-kwargs.py">
+<script type="text/plain" class="pyodide-code">def jalankan(func):
+    def wrapper(*args, **kwargs):
+        print("args   :", args)
+        print("kwargs :", kwargs)
+        return func(*args, **kwargs)
+    return wrapper
+
+
+@jalankan
+def total(a, b, bonus=0):
+    return a + b + bonus
+
+
+print("Hasil 1:", total(10, 20))
+print()
+print("Hasil 2:", total(10, 20, bonus=5))</script>
+</div>
+
+::: {.notes}
+- Jalankan dan perhatikan bentuk tuple pada `args` dan dictionary pada `kwargs`.
+- Hubungkan dengan pemanggilan method pada starter code.
+- Tantangan: panggil `total(a=10, b=20, bonus=5)` dan amati perubahan `args` serta `kwargs`.
+:::
+
+---
+
+# Decorator yang Mengubah Hasil
+
+Decorator tidak hanya menambahkan output — decorator juga bisa mengubah **return value**.
+
+```python
+def jadi_boolean(func):
+    def wrapper(*args, **kwargs):
+        hasil = func(*args, **kwargs)
+        return bool(hasil)
+    return wrapper
+```
+
+```text
+0     → False        "yes" → True
+1     → True         ""    → False
+```
+
+::: {.notes}
+- Bedakan "menjalankan function" dengan "mengubah hasil function".
+- `bool(hasil)` adalah inti decorator jenis ini.
+- Dalam study case, decorator `hasil_boolean` memastikan hasil `setor` menjadi `True/False`.
+:::
+
+---
+
+# Playground 6 — Transform Return Value
+
+Decorator ini mempertahankan `*args/**kwargs`, tetapi mengubah return value.
+
+<div class="pyodide-playground" data-title="boolean-decorator.py">
+<script type="text/plain" class="pyodide-code">def jadi_boolean(func):
+    def wrapper(*args, **kwargs):
+        hasil = func(*args, **kwargs)
+        return bool(hasil)
+    return wrapper
+
+
+@jadi_boolean
+def cek_nilai(nilai):
+    if nilai >= 75:
+        return 1
+    return 0
+
+
+print("Nilai 80 ->", cek_nilai(80))
+print("Nilai 60 ->", cek_nilai(60))
+print("Tipe hasil ->", type(cek_nilai(80)).__name__)</script>
+</div>
+
+::: {.notes}
+- Tanyakan apa yang terjadi jika function asli mengembalikan `2`, `-1`, atau `""`.
+- Tekankan bahwa decorator tidak perlu mengubah isi `cek_nilai`.
+:::
+
+---
+
+# Decorator untuk Mencatat Percobaan
+
+Sekarang kita tambahkan efek samping: setiap kali function dipanggil, sebuah counter bertambah.
+
+```python
+def catat(func):
+    def wrapper(*args, **kwargs):
+        hasil = func(*args, **kwargs)
+        Sistem.percobaan += 1
+        return hasil
+    return wrapper
+```
+
+```text
+call → func asli → counter + 1 → return hasil
+```
+
+**Yang dihitung adalah percobaan memanggil function, bukan hanya keberhasilan.**
+
+::: {.notes}
+- Ini persis pola penting untuk study case.
+- Jangan tertukar antara "attempt" dan "success".
+- Setoran gagal tetap merupakan satu percobaan sehingga counter harus tetap bertambah.
+:::
+
+---
+
+# Decorator Chaining
+
+Kita bisa memakai lebih dari satu decorator sekaligus:
+
+```python
+@catat
+@jadi_boolean
+def cek(...):
+    ...
+```
+
+Cara membacanya (dari dalam ke luar):
+
+```text
+cek → jadi_boolean → catat → wrapper paling luar
+```
+
+Secara konsep: `cek = catat(jadi_boolean(cek))` — **urutan decorator penting.**
+
+::: {.notes}
+- Jelaskan aturan praktis: decorator yang paling dekat dengan function diterapkan terlebih dahulu.
+- Untuk study case, `hasil_boolean` membungkus method asli, lalu `catat_setoran` membungkus hasil tersebut.
+- Tidak perlu membahas descriptor atau detail bytecode.
+:::
+
+---
+
+# Playground 7 — Chaining
+
+Kode di bawah menggunakan dua decorator sekaligus. Coba ubah urutan decorator dan amati perilakunya.
+
+<div class="pyodide-playground" data-title="decorator-chain.py">
+<script type="text/plain" class="pyodide-code">class Sistem:
+    percobaan = 0
+
+
+def catat(func):
+    def wrapper(*args, **kwargs):
+        hasil = func(*args, **kwargs)
+        Sistem.percobaan += 1
+        return hasil
+    return wrapper
+
+
+def jadi_boolean(func):
+    def wrapper(*args, **kwargs):
+        hasil = func(*args, **kwargs)
+        return bool(hasil)
+    return wrapper
+
+
+@catat
+@jadi_boolean
+def cek_nilai(nilai):
+    return nilai >= 75
+
+
+print("Hasil:", cek_nilai(80))
+print("Percobaan:", Sistem.percobaan)
+
+print("Hasil:", cek_nilai(60))
+print("Percobaan:", Sistem.percobaan)</script>
+</div>
+
+::: {.notes}
+- Pastikan mahasiswa menjalankan sebelum memodifikasi.
+- Minta mereka membaca dari decorator paling bawah ke atas.
+- Tekankan bahwa counter tetap naik pada nilai 60 karena function tetap dipanggil.
+:::
+
+---
+
+# Method yang Mengubah State
+
+Validasi dulu, mutasi kemudian — jangan lakukan `self.saldo += jumlah` sebelum validasi selesai.
+
+```python
+class Dompet:
+    def __init__(self, saldo):
+        self.saldo = saldo
+
+    def tambah(self, jumlah):
+        saldo_baru = self.saldo + jumlah
+
+        if jumlah <= 0:
+            return False
+        if saldo_baru > 500000:
+            return False
+
+        self.saldo = saldo_baru
+        return True
+```
+
+```text
+input → cek aturan → valid? → ya: update state / tidak: state tetap
+```
+
+> **Prinsip:** validasi dulu, mutasi kemudian — ini membuat aturan state jauh lebih mudah dilacak.
+
+::: {.notes}
+- Ini pola yang akan langsung dipakai untuk method `setor`.
+- Perhatikan bahwa state hanya diubah setelah semua validasi lolos.
+- Jika gagal, return `False` dan saldo tidak disentuh — ini mencegah state object menjadi tidak valid.
+- Mahasiswa sering melakukan assignment terlalu awal lalu mencoba "membatalkan". Lebih sederhana menghitung candidate state terlebih dahulu.
+- Property setter juga menjadi lapisan pengaman tambahan.
+:::
+
+---
+
+# Playground 8 — State + Validation
+
+Contoh lengkap dengan batas saldo.
+
+<div class="pyodide-playground" data-title="state-validation.py">
+<script type="text/plain" class="pyodide-code">class Dompet:
+    batas = 500
+
+    def __init__(self, saldo):
+        self.saldo = saldo
+
+    def tambah(self, jumlah):
+        saldo_baru = self.saldo + jumlah
+
+        if jumlah <= 0:
+            return False
+
+        if saldo_baru > self.batas:
+            return False
+
+        self.saldo = saldo_baru
+        return True
+
+
+dompet = Dompet(300)
+
+print("Saldo awal:", dompet.saldo)
+
+berhasil = dompet.tambah(150)
+print("Berhasil   :", berhasil)
+print("Saldo akhir:", dompet.saldo)
+
+berhasil = dompet.tambah(100)
+print("Berhasil   :", berhasil)
+print("Saldo akhir:", dompet.saldo)</script>
+</div>
+
+::: {.notes}
+- Jalankan: 300 + 150 berhasil menjadi 450.
+- Penambahan 100 gagal karena melewati 500. Perhatikan saldo tetap 450 setelah kegagalan.
+- Tantangan: ubah batas atau jumlah agar mendapatkan kasus tepat di batas.
+:::
+
+---
+
+# Parsing Input & String Validation
+
+Starter code memiliki alur seperti ini:
+
+```python
+nama, nomor, saldo, jumlah = input().split()
+teks = f"{nama} {nomor} {saldo}"
+tabungan = Tabungan.dari_teks(teks)
+```
+
+```text
+main → input → factory → parsing + konversi → constructor → object
+```
+
+Main program tidak perlu tahu detail pembuatan object. Validator nomor rekening pada study case memiliki aturan: **`A` + tepat 4 digit**, dipecah menjadi kondisi kecil:
+
+```python
+def valid(kode):
+    return (
+        len(kode) == 5
+        and kode[0] == "A"
+        and kode[1:].isdigit()
+    )
+```
+
+::: {.notes}
+- Hubungkan factory method dengan starter code — main hanya mengatur alur, detail parsing berada di factory.
+- Untuk validasi string, pecah requirement menjadi tiga pertanyaan: panjangnya benar? karakter awal benar? sisanya digit?
+- Contoh: `A1001` valid, `A07` tidak valid, `B4004` tidak valid.
+- Kode ini adalah contoh konsep, bukan implementasi yang harus disalin mentah untuk study case.
+- Jangan memindahkan atau mengubah main program jika requirement meminta main tetap dipertahankan.
+:::
+
+---
+
+# Playground 9 — Parsing & Validation
+
+Contoh berbeda dari study case, tetapi pola berpikirnya sama.
+
+<div class="pyodide-playground" data-title="string-validation.py">
+<script type="text/plain" class="pyodide-code">class Kartu:
+    @staticmethod
+    def nomor_valid(nomor):
+        return (
+            len(nomor) == 6
+            and nomor[0] == "K"
+            and nomor[1:].isdigit()
+        )
+
+
+nomor1 = "K12345"
+nomor2 = "K123"
+nomor3 = "A12345"
+nomor4 = "K12A45"
+
+for nomor in [nomor1, nomor2, nomor3, nomor4]:
+    print(nomor, "->", Kartu.nomor_valid(nomor))</script>
+</div>
+
+::: {.notes}
+- Kode ini sengaja memakai prefix K dan 5 digit, bukan aturan nomor rekening.
+- Minta mahasiswa menjelaskan tiga kondisi dalam `return`.
+- Modifikasi prefix menjadi `P`, atau ubah panjang menjadi aturan lain dan prediksi output.
+:::
+
+---
+
+# Menggabungkan Semua Konsep
+
+Arsitektur study case `Tabungan`:
+
+```text
+Tabungan
+├── class attributes: total_rekening, total_setoran, saldo_maksimal
+├── constructor
+├── classmethod   → dari_teks()
+├── staticmethod  → nomor_valid()
+├── property      → saldo (getter + setter)
+├── decorators    → catat_setoran, hasil_boolean
+├── method        → setor()
+└── method        → kategori()
+```
+
+::: {.notes}
+- Ini adalah slide integrasi.
+- Tunjukkan bahwa setiap TODO sebenarnya hanya meminta satu pola yang sudah dipelajari.
+- Mahasiswa tidak perlu mengerjakan semuanya sekaligus — pecah implementasi menjadi blok-blok kecil.
+:::
+
+---
+
+# Pemetaan TODO → Konsep
+
+| Bagian TODO | Konsep utama |
+|---|---|
+| `dari_teks()` | `@classmethod` + parsing |
+| `nomor_valid()` | `@staticmethod` |
+| getter `saldo` | `@property` |
+| setter `saldo` | validasi state |
+| `catat_setoran()` | decorator + class state |
+| `hasil_boolean()` | decorator + `bool()` |
+| `setor()` | validasi + mutasi state |
+| `kategori()` | conditional logic |
+| `Tabungan.total_*` | class attribute |
+
+**Jangan melihat 10 TODO sebagai 10 masalah berbeda — semuanya adalah pola yang sama, diulang.**
+
+::: {.notes}
+- Ini slide paling penting untuk transisi dari materi ke pengerjaan.
+- Minta mahasiswa memilih TODO berdasarkan konsep yang sudah dipahami.
+- Urutan pengerjaan yang mudah: class attributes → factory → staticmethod → property → decorator → setor → kategori.
+:::
+
+---
+
+# Checklist Sebelum Submit
+
+Kerjakan bertahap: **struktur dasar → utility → decorator → business logic**, lalu jalankan test case satu per satu.
+
+- [ ] `total_rekening` bertambah satu kali per object.
+- [ ] `total_setoran` bertambah untuk setiap percobaan `setor`.
+- [ ] Factory method memakai `cls`.
+- [ ] Static method tidak membutuhkan object.
+- [ ] `saldo` menggunakan getter + setter, tidak pernah keluar dari batas.
+- [ ] Decorator menerima `*args/**kwargs` dan meneruskannya ke function asli.
+- [ ] Hasil `setor` berupa boolean; setoran gagal tidak mengubah saldo.
+- [ ] Kategori mengikuti interval yang diberikan.
+- [ ] Main program dan label output tetap sesuai requirement.
+
+> Contoh cara baca test case: saldo 900000 + setoran 200000 > batas 1000000 → **setor gagal**, saldo tetap 900000, tapi percobaan tetap dihitung.
+
+::: {.notes}
+- Gunakan checklist ini setelah kode selesai.
+- Fokus pada invariant: counter, saldo, dan return value.
+- Ajarkan mahasiswa membaca test case sebagai urutan state transition; bedakan "gagal" dengan "tidak dihitung" — counter setoran tetap naik meskipun transaksi gagal.
+:::
+
+---
+
+# Final Playground — Eksperimen Bebas
+
+Kode contoh sudah lengkap. Sekarang modifikasi sendiri: ubah batas, ubah kategori, tambahkan method, ubah decorator, atau buat class baru dengan pola yang sama.
+
+<div class="pyodide-playground" data-title="sandbox.py">
+<script type="text/plain" class="pyodide-code">class Dompet:
+    batas = 1000
+    total_transaksi = 0
+
+    def __init__(self, pemilik, saldo):
+        self.pemilik = pemilik
+        self.saldo = saldo
+
+    def tambah(self, jumlah):
+        Dompet.total_transaksi += 1
+
+        saldo_baru = self.saldo + jumlah
+
+        if jumlah <= 0 or saldo_baru > self.batas:
+            return False
+
+        self.saldo = saldo_baru
+        return True
+
+    def kategori(self):
+        if self.saldo == 0:
+            return "Kosong"
+        if self.saldo <= 500:
+            return "Standar"
+        return "Tinggi"
+
+
+dompet = Dompet("Raka", 400)
+
+print("Pemilik :", dompet.pemilik)
+print("Saldo   :", dompet.saldo)
+print("Kategori:", dompet.kategori())
+
+print("Tambah  :", dompet.tambah(300))
+print("Saldo   :", dompet.saldo)
+print("Kategori:", dompet.kategori())
+
+print("Transaksi:", Dompet.total_transaksi)</script>
+</div>
+
+::: {.notes}
+- Berikan waktu untuk eksplorasi.
+- Minta mahasiswa membuat satu perubahan yang dapat diamati dari output.
+- Jangan fokus pada "jawaban benar"; fokus pada hubungan perubahan kode dengan state object.
+:::
+
+---
+
+# Penutup
+
+### Pecahkan TODO menjadi konsep kecil
+
+| Konsep | Peran |
+|---|---|
+| Class state | data bersama |
+| Factory method | cara alternatif membuat object |
+| Static method | utility tanpa object |
+| Property | kontrol state |
+| Decorator | tambah perilaku |
+| `*args/**kwargs` | wrapper fleksibel |
+| Validation → mutation | menjaga object tetap valid |
+
+**Kembali ke starter code, petakan setiap TODO, lalu implementasikan satu konsep pada satu waktu.**
+
+::: {.notes}
+- Tutup dengan mengulang tujuh ide utama.
+- Tekankan bahwa study case ini adalah latihan menggabungkan konsep, bukan sekadar latihan syntax.
+- Setelah slide ini, mahasiswa seharusnya dapat kembali ke starter code dan mengidentifikasi konsep untuk setiap TODO.
+:::
